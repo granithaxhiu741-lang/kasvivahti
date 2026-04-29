@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kasvivahti</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f9f4; color: #333; margin: 0; padding: 20px; }
+        max-width: 600px; margin: auto;
+        h1 { text-align: center; color: #2e7d32; }
+        .form-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input[type="text"], input[type="number"] { width: calc(100% - 22px); padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; }
+        button:hover { background-color: #45a049; }
+        .plant-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #4CAF50; }
+        .plant-info h3 { margin: 0 0 5px 0; color: #2e7d32; }
+        .plant-info p { margin: 0; font-size: 14px; color: #555; }
+        .urgent { border-left-color: #d32f2f; }
+        .actions button { width: auto; margin-left: 5px; font-size: 14px; }
+        .btn-water { background-color: #2196F3; }
+        .btn-delete { background-color: #f44336; }
+    </style>
+</head>
+<body>
+    <div style="max-width: 600px; margin: auto;">
+        <h1>🌿 Kasvivahti</h1>
+        <div class="form-container">
+            <h3>Lisää uusi kasvi</h3>
+            <input type="text" id="plantName" placeholder="Kasvin nimi (esim. Peikonlehti)" required>
+            <input type="number" id="waterInterval" placeholder="Kasteluväli (päivinä)" min="1" required>
+            <button onclick="addPlant()">Lisää kasvi</button>
+        </div>
+        <div id="plantList"></div>
+    </div>
+
+    <script>
+        let plants = JSON.parse(localStorage.getItem('plants')) || [];
+
+        function savePlants() {
+            localStorage.setItem('plants', JSON.stringify(plants));
+            renderPlants();
+        }
+
+        function addPlant() {
+            const name = document.getElementById('plantName').value;
+            const interval = parseInt(document.getElementById('waterInterval').value);
+
+            if (name && interval) {
+                const newPlant = {
+                    id: Date.now(),
+                    name: name,
+                    interval: interval,
+                    nextWatering: new Date(new Date().getTime() + interval * 24 * 60 * 60 * 1000).toISOString()
+                };
+                plants.push(newPlant);
+                document.getElementById('plantName').value = '';
+                document.getElementById('waterInterval').value = '';
+                savePlants();
+            } else {
+                alert("Täytä molemmat kentät!");
+            }
+        }
+
+        function waterPlant(id) {
+            const plant = plants.find(p => p.id === id);
+            if (plant) {
+                plant.nextWatering = new Date(new Date().getTime() + plant.interval * 24 * 60 * 60 * 1000).toISOString();
+                savePlants();
+            }
+        }
+
+        function deletePlant(id) {
+            plants = plants.filter(p => p.id !== id);
+            savePlants();
+        }
+
+        function renderPlants() {
+            const list = document.getElementById('plantList');
+            list.innerHTML = '';
+            
+            plants.sort((a, b) => new Date(a.nextWatering) - new Date(b.nextWatering));
+
+            plants.forEach(plant => {
+                const nextDate = new Date(plant.nextWatering);
+                const isUrgent = nextDate <= new Date();
+                
+                const div = document.createElement('div');
+                div.className = `plant-card ${isUrgent ? 'urgent' : ''}`;
+                div.innerHTML = `
+                    <div class="plant-info">
+                        <h3>${plant.name}</h3>
+                        <p>Kasteluväli: ${plant.interval} pv</p>
+                        <p>Seuraava kastelu: <strong>${nextDate.toLocaleDateString('fi-FI')}</strong></p>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-water" onclick="waterPlant(${plant.id})">💧 Kasteltu</button>
+                        <button class="btn-delete" onclick="deletePlant(${plant.id})">❌</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+        renderPlants();
+    </script>
+</body>
+</html>
